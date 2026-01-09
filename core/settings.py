@@ -25,9 +25,9 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['claro-tracker.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
