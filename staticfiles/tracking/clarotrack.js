@@ -1,6 +1,7 @@
 (function () {
 
-  window.google_tag_manager ||
+  const hasGTM =
+    window.google_tag_manager ||
     document.querySelector('script[src*="googletagmanager.com/gtm.js"]');
 
   if (hasGTM) {
