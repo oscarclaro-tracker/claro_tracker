@@ -129,7 +129,15 @@ console.log('🚀 [ClaroTrack] Script cargado');
   // =========================
   // 3️⃣ Page events
   // =========================
-  window.addEventListener('load', () => pushEvent('page_view'));
+  function firePageView() {
+  pushEvent('page_view');
+}
+
+if (document.readyState === 'complete') {
+  firePageView(); // 🔥 ya cargó
+} else {
+  window.addEventListener('load', firePageView);
+}
   window.addEventListener('beforeunload', () => pushEvent('page_unload'));
   document.addEventListener('visibilitychange', () =>
     pushEvent('visibility_change', { state: document.visibilityState })
