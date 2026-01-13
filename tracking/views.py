@@ -9,9 +9,34 @@ import requests
 from django.conf import settings
 import uuid
 import logging
+from django.views.decorators.cache import never_cache
+from django.http import HttpResponse
+import os
 
 logger = logging.getLogger(__name__)
 
+@never_cache
+def clarotrack_static_proxy(request):
+    file_path = os.path.join(
+        settings.BASE_DIR,
+        'tracking',
+        'static',
+        'tracking',
+        'clarotrack.js'
+    )
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        response = HttpResponse(
+            f.read(),
+            content_type='application/javascript'
+        )
+
+    # 🔥 Headers ANTI Cloudflare
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+
+    return response
 
 def send_event_to_ga4(event_name, client_id, params=None):
     url = "https://www.google-analytics.com/mp/collect"
