@@ -1,4 +1,21 @@
+console.log('🚀 [ClaroTrack] Script cargado');
+
 (function () {
+  console.log('✅ [ClaroTrack] IIFE iniciando...');
+
+  const hasGTM =
+    window.google_tag_manager ||
+    document.querySelector('script[src*="googletagmanager.com/gtm.js"]');
+
+  console.log('🔍 [ClaroTrack] hasGTM =', hasGTM);
+
+  if (hasGTM) {
+    console.warn('[ClaroTrack] GTM detectado → tracking deshabilitado');
+    return;
+  }
+
+  console.log('[ClaroTrack] GTM no detectado → tracking activo');
+
   const API = 'https://claro-tracker.onrender.com/api/collect/';
 
   // =========================
@@ -43,7 +60,7 @@
 
     if (item && item.event) {
       send(item.event, item);
-      applyRules(item.event, item); // <-- Aplicar reglas dinámicas
+      applyRules(item.event, item);
     }
 
     return originalPush.apply(this, arguments);
@@ -62,7 +79,7 @@
   let dynamicRules = [];
   async function loadRules() {
     try {
-      const res = await fetch('https://claro-tracker.onrender.com/api/tracking_rules/'); // Devuelve JSON
+      const res = await fetch('https://claro-tracker.onrender.com/api/tracking_rules/');
       dynamicRules = await res.json();
     } catch (e) {
       console.error('[ClaroTrack] Error cargando reglas', e);
@@ -74,24 +91,18 @@
   // =========================
   function applyRules(eventName, eventData) {
     dynamicRules.forEach(rule => {
-      // Filtrado por evento
       if (rule.listen_event !== eventName) return;
-
-      // Filtrado por URL
       if (rule.url_contains && !location.pathname.includes(rule.url_contains)) return;
 
-      // Filtrado por selector si aplica
       if (rule.selector) {
         const el = document.querySelector(rule.selector);
         if (!el) return;
-
         if (
           (rule.match_id && el.id !== eventData.id) ||
           (rule.match_text && !el.innerText.includes(eventData.text))
         ) return;
       }
 
-      // Mapear parámetros
       const params = {};
       if (rule.params_map) {
         for (const key in rule.params_map) {
@@ -100,13 +111,11 @@
         }
       }
 
-      // Enviar evento al dataLayer
       window.dataLayer.push({
         event: rule.fire_event,
         ...params
       });
 
-      // Ejecutar JS personalizado de la regla
       if (rule.custom_js) {
         try {
           new Function(rule.custom_js)();
@@ -116,11 +125,6 @@
       }
     });
   }
-
-  // =========================
-  // 2️⃣ Inicializar reglas dinámicas
-  // =========================
-  //loadRules();
 
   // =========================
   // 3️⃣ Page events
@@ -148,7 +152,6 @@
     })
   );
 
-  // Input / form events
   ['input', 'change', 'submit', 'focus', 'blur'].forEach(ev =>
     document.addEventListener(ev, e => {
       const el = e.target;
@@ -239,4 +242,7 @@
   window.ClaroTrack = {
     track: (eventName, data = {}) => pushEvent(eventName, data)
   };
+
 })();
+
+console.log('🏁 [ClaroTrack] Script finalizado');
