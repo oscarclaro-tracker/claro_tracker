@@ -8,7 +8,7 @@ class Command(BaseCommand):
         rules = [
             {
                 "listen_event": "page_view",
-                "fire_event": "page_view_prueba_tienda",
+                "fire_event": "Brave_page_view_prueba_tienda",
                 "active": True,
                 "url_contains": "",
                 "params_map": {}
