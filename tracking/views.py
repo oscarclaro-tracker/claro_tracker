@@ -46,16 +46,21 @@ def send_event_to_ga4(event_name, client_id, params=None):
 
 @api_view(['POST'])
 def collect_event(request):
-    data = request.data
+    data = request.data or {}
 
-    payload = data.get('dataLayer', {})
+    event_name = data.get("event")
+    path = data.get("path") or data.get("page_location")
+    aid = data.get("aid") or data.get("client_id")
 
-    # 1️⃣ Guardar evento crudo
+    if not event_name:
+        return Response({"error": "missing event"}, status=400)
+
+    # 1️⃣ Guardar evento crudo (SEGURO)
     event = Event.objects.create(
-        aid=data.get('aid'),
-        event=data.get('event'),
-        path=data.get('path'),
-        user_agent=request.META.get('HTTP_USER_AGENT')
+        aid=aid or "anonymous",
+        event=event_name,
+        path=path or "/",
+        user_agent=request.META.get("HTTP_USER_AGENT", "")
     )
 
     # 2️⃣ Buscar reglas GA4
@@ -66,29 +71,37 @@ def collect_event(request):
 
     for rule in ga4_rules:
 
-        # Filtro por URL
         if rule.url_contains and rule.url_contains not in event.path:
             continue
 
-        # 3️⃣ Mapear parámetros
+        # 3️⃣ Params map seguro
         params = {}
-        for ga4_param, source_key in rule.params_map.items():
-            value = payload.get(source_key)
+
+        params_map = rule.params_map or {}
+        if isinstance(params_map, str):
+            try:
+                params_map = json.loads(params_map)
+            except Exception:
+                params_map = {}
+
+        for ga4_param, source_key in params_map.items():
+            value = data.get(source_key)
             if value is not None:
                 params[ga4_param] = value
 
         # 4️⃣ Campos mínimos GA4
         params.update({
-            "page_location": f"http://localhost{event.path}",
+            "page_location": event.path,
             "engagement_time_msec": 1,
         })
 
-        # 5️⃣ Enviar a GA4
-        send_event_to_ga4(
-            event_name=rule.fire_event,
-            client_id=event.aid,
-            params=params
-        )
+        # 5️⃣ Enviar a GA4 SOLO si hay config
+        if hasattr(settings, "GA4_MEASUREMENT_ID") and hasattr(settings, "GA4_API_SECRET"):
+            send_event_to_ga4(
+                event_name=rule.fire_event,
+                client_id=event.aid,
+                params=params
+            )
 
     return Response({"status": "ok"})
 
