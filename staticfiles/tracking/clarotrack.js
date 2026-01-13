@@ -1,3 +1,4 @@
+console.log('🚀 [ClaroTrack] Script cargado');
 (function () {
 
   const hasGTM =
