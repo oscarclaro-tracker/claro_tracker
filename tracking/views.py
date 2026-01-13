@@ -7,14 +7,17 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import requests
 from django.conf import settings
-
-from django.conf import settings
+import uuid
 
 def send_event_to_ga4(event_name, client_id, params=None):
     url = "https://www.google-analytics.com/mp/collect"
+    
+    # Asegurar que client_id sea string válido
+    if not client_id or client_id == "anonymous":
+        client_id = str(uuid.uuid4())
 
     payload = {
-        "client_id": client_id,
+        "client_id": str(client_id),  # Forzar string
         "events": [
             {
                 "name": event_name,
@@ -24,25 +27,38 @@ def send_event_to_ga4(event_name, client_id, params=None):
     }
 
     print("➡️ Enviando a GA4:")
+    print("   URL:", url)
+    print("   Measurement ID:", settings.GA4_MEASUREMENT_ID)
     print("   Event:", event_name)
     print("   Client ID:", client_id)
     print("   Params:", params)
+    print("   Payload completo:", json.dumps(payload, indent=2))
 
-    response = requests.post(
-        url,
-        params={
-            "measurement_id": settings.GA4_MEASUREMENT_ID,
-            "api_secret": settings.GA4_API_SECRET,
-        },
-        json=payload,
-        timeout=3
-    )
+    try:
+        response = requests.post(
+            url,
+            params={
+                "measurement_id": settings.GA4_MEASUREMENT_ID,
+                "api_secret": settings.GA4_API_SECRET,
+            },
+            json=payload,
+            timeout=5
+        )
 
-    print("⬅️ GA4 response status:", response.status_code)
-    print("⬅️ GA4 response body:", response.text)
-
-    return response.status_code
-
+        print("⬅️ GA4 response status:", response.status_code)
+        print("⬅️ GA4 response body:", response.text)
+        
+        # GA4 devuelve 204 si todo está OK (sin body)
+        if response.status_code == 204:
+            print("✅ Evento enviado exitosamente")
+        else:
+            print("⚠️ Status code inesperado")
+            
+        return response.status_code
+        
+    except Exception as e:
+        print("❌ Error enviando a GA4:", str(e))
+        return 500
 
 @api_view(['POST'])
 def collect_event(request):
@@ -50,7 +66,7 @@ def collect_event(request):
 
     event_name = data.get("event")
     path = data.get("path") or data.get("page_location")
-    aid = data.get("aid") or data.get("client_id")
+    aid = data.get("aid") or data.get("client_id") or str(uuid.uuid4())
 
     if not event_name:
         return Response({"error": "missing event"}, status=400)
@@ -90,6 +106,7 @@ def collect_event(request):
                 params[ga4_param] = value
 
         # 4️⃣ Campos mínimos GA4
+        
         params.update({
             "page_location": event.path,
             "engagement_time_msec": 1,
