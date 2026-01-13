@@ -74,32 +74,46 @@ def collect_event(request):
     event_name = data.get("event")
     path = data.get("path") or data.get("page_location")
     aid = data.get("aid") or data.get("client_id") or str(uuid.uuid4())
-    print("Inicia el collect_event")
+    
+    logger.warning(f"📋 Event name: {event_name}")
+    logger.warning(f"📋 Path: {path}")
+    logger.warning(f"📋 AID: {aid}")
+    
     if not event_name:
         return Response({"error": "missing event"}, status=400)
 
-    # 1️⃣ Guardar evento crudo (SEGURO)
+    # 1️⃣ Guardar evento
     event = Event.objects.create(
         aid=aid or "anonymous",
         event=event_name,
         path=path or "/",
         user_agent=request.META.get("HTTP_USER_AGENT", "")
     )
+    logger.warning(f"✅ Evento guardado ID: {event.id}")
 
     # 2️⃣ Buscar reglas GA4
     ga4_rules = GA4Rule.objects.filter(
         listen_event=event.event,
         active=True
     )
+    
+    logger.warning(f"🔍 Reglas encontradas para '{event.event}': {ga4_rules.count()}")
+    
+    # 👀 Mostrar TODAS las reglas disponibles
+    all_rules = GA4Rule.objects.all()
+    logger.warning(f"📚 Total reglas en DB: {all_rules.count()}")
+    for r in all_rules:
+        logger.warning(f"   - ID:{r.id} | listen='{r.listen_event}' | fire='{r.fire_event}' | active={r.active}")
 
     for rule in ga4_rules:
+        logger.warning(f"🎯 Procesando regla ID: {rule.id}")
 
         if rule.url_contains and rule.url_contains not in event.path:
+            logger.warning(f"⏭️ Saltando (URL '{event.path}' no contiene '{rule.url_contains}')")
             continue
 
-        # 3️⃣ Params map seguro
+        # 3️⃣ Params map
         params = {}
-
         params_map = rule.params_map or {}
         if isinstance(params_map, str):
             try:
@@ -113,22 +127,27 @@ def collect_event(request):
                 params[ga4_param] = value
 
         # 4️⃣ Campos mínimos GA4
-        
         params.update({
             "page_location": event.path,
             "engagement_time_msec": 1,
         })
 
-        # 5️⃣ Enviar a GA4 SOLO si hay config
+        # 5️⃣ Enviar a GA4
+        logger.warning(f"🚀 LLAMANDO send_event_to_ga4...")
+        logger.warning(f"   GA4_MEASUREMENT_ID existe: {hasattr(settings, 'GA4_MEASUREMENT_ID')}")
+        logger.warning(f"   GA4_API_SECRET existe: {hasattr(settings, 'GA4_API_SECRET')}")
+        
         if hasattr(settings, "GA4_MEASUREMENT_ID") and hasattr(settings, "GA4_API_SECRET"):
+            logger.warning(f"   Measurement ID: {settings.GA4_MEASUREMENT_ID}")
             send_event_to_ga4(
                 event_name=rule.fire_event,
                 client_id=event.aid,
                 params=params
             )
+        else:
+            logger.error("❌ Credenciales GA4 NO configuradas")
 
     return Response({"status": "ok"})
-
 
 @api_view(['GET'])
 def tracking_rules(request):
