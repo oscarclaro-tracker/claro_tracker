@@ -1,4 +1,16 @@
 (function () {
+
+  window.google_tag_manager ||
+    document.querySelector('script[src*="googletagmanager.com/gtm.js"]');
+
+  if (hasGTM) {
+    console.warn('[ClaroTrack] GTM detectado → tracking deshabilitado');
+    return;
+  }
+
+  console.log('[ClaroTrack] GTM no detectado → tracking activo');
+
+
   const API = 'https://claro-tracker.onrender.com/api/collect/';
 
   // =========================
