@@ -1,5 +1,5 @@
 (function () {
-  const API = 'http://127.0.0.1:8000/api/collect/';
+  const API = 'https://claro-tracker.onrender.com/api/collect/';
 
   // =========================
   // ID anónimo del visitante
