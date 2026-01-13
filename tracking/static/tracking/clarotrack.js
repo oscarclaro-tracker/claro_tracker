@@ -10,27 +10,36 @@ console.log('🚀 [ClaroTrack] Script cargado');
   console.log('🔍 [ClaroTrack] hasGTM =', hasGTM);
 
   if (hasGTM) {
-    console.warn('[ClaroTrack] GTM detectado, verificando si está funcionando...');
+    console.warn('[ClaroTrack] GTM detectado, verificando si GA4 está funcionando...');
     
-    // Esperar 2 segundos para ver si GTM realmente funciona
+    // Esperar 3 segundos para ver si GA4 realmente funciona
     setTimeout(() => {
-      // Verificar si GTM está realmente activo (no bloqueado)
-      const gtmWorking = window.dataLayer && window.dataLayer.some(item => 
-        item.event === 'gtm.js' || item.event === 'gtm.load'
-      );
+      // Verificar si existe gtag (Google Analytics)
+      const gtagExists = typeof window.gtag === 'function';
       
-      console.log('🔍 [ClaroTrack] GTM funcionando:', gtmWorking);
+      // Verificar si hay scripts de GA4/Google Analytics
+      const hasGAScript = 
+        document.querySelector('script[src*="googletagmanager.com/gtag/js"]') ||
+        document.querySelector('script[src*="google-analytics.com/analytics.js"]') ||
+        document.querySelector('script[src*="analytics.google.com"]');
       
-      if (gtmWorking) {
-        console.warn('[ClaroTrack] GTM activo → ClaroTrack deshabilitado');
+      // Si gtag existe O hay scripts de GA, consideramos que GA funciona
+      const gaWorking = gtagExists || hasGAScript;
+      
+      console.log('🔍 [ClaroTrack] gtag existe:', gtagExists);
+      console.log('🔍 [ClaroTrack] Scripts GA encontrados:', hasGAScript);
+      console.log('🔍 [ClaroTrack] GA4 funcionando:', gaWorking);
+      
+      if (gaWorking) {
+        console.warn('[ClaroTrack] GA4 activo → ClaroTrack deshabilitado');
         return;
       } else {
-        console.log('✅ [ClaroTrack] GTM bloqueado → ClaroTrack tomará el control');
+        console.log('✅ [ClaroTrack] GA4 bloqueado → ClaroTrack tomará el control');
         initClaroTrack();
       }
-    }, 2000);
+    }, 3000); // 3 segundos para dar tiempo a que GA se cargue
     
-    return; // Salir temporalmente
+    return;
   }
 
   console.log('✅ [ClaroTrack] GTM no detectado → tracking activo');
