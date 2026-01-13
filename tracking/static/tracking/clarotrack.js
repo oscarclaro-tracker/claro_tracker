@@ -62,7 +62,7 @@
   let dynamicRules = [];
   async function loadRules() {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/tracking_rules/'); // Devuelve JSON
+      const res = await fetch('https://claro-tracker.onrender.com/api/tracking_rules/'); // Devuelve JSON
       dynamicRules = await res.json();
     } catch (e) {
       console.error('[ClaroTrack] Error cargando reglas', e);
