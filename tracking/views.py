@@ -8,6 +8,10 @@ from django.views.decorators.csrf import csrf_exempt
 import requests
 from django.conf import settings
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def send_event_to_ga4(event_name, client_id, params=None):
     url = "https://www.google-analytics.com/mp/collect"
@@ -62,6 +66,9 @@ def send_event_to_ga4(event_name, client_id, params=None):
 
 @api_view(['POST'])
 def collect_event(request):
+    logger.warning("🔥 collect_event EJECUTADO")
+    logger.warning(f"🔥 METHOD: {request.method}")
+    logger.warning(f"🔥 DATA RAW: {request.body}")
     data = request.data or {}
 
     event_name = data.get("event")
