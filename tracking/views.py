@@ -67,7 +67,7 @@ def collect_event(request):
     event_name = data.get("event")
     path = data.get("path") or data.get("page_location")
     aid = data.get("aid") or data.get("client_id") or str(uuid.uuid4())
-
+    print("Inicia el collect_event")
     if not event_name:
         return Response({"error": "missing event"}, status=400)
 
