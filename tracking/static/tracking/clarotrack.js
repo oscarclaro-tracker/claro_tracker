@@ -1,34 +1,65 @@
 console.log('🚀 [ClaroTrack] Script cargado');
 
 (async function () {
-
-async function isGA4ReallyWorking() {
-    try {
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), 1500);
-
-      await fetch('https://www.google-analytics.com/g/collect', {
-        method: 'POST',
-        mode: 'no-cors',
-        body: 'v=2&tid=G-TEST&cid=555&t=pageview',
-        signal: controller.signal
-      });
-
-      return true;
-    } catch {
-      return false;
-    }
-  }
+  console.log('✅ [ClaroTrack] Iniciando detección...');
 
   const hasGTM = !!window.google_tag_manager;
-  const ga4Works = await isGA4ReallyWorking(); // ✅ ahora sí
+  
+  console.log('🔍 [ClaroTrack] GTM detectado:', hasGTM);
 
-  console.log('[ClaroTrack]', { hasGTM, ga4Works });
-
-  if (hasGTM && ga4Works) {
-    console.warn('[ClaroTrack] GTM + GA4 OK → no se inicializa');
+  if (!hasGTM) {
+    console.log('✅ [ClaroTrack] No hay GTM → iniciando ClaroTrack');
+    initClaroTrack();
     return;
   }
+
+  // Si hay GTM, esperar 3 segundos para ver si envía eventos a GA4
+  console.log('⏳ [ClaroTrack] GTM detectado, esperando 3s para verificar GA4...');
+  
+  let ga4RequestDetected = false;
+
+  // Interceptar fetch para detectar peticiones a GA4
+  const originalFetch = window.fetch;
+  window.fetch = function(...args) {
+    const url = args[0];
+    if (typeof url === 'string' && 
+        (url.includes('/g/collect') || 
+         url.includes('/mp/collect') ||
+         url.includes('google-analytics.com') ||
+         url.includes('analytics.google.com'))) {
+      ga4RequestDetected = true;
+      console.log('🔍 [ClaroTrack] Request a GA4 detectado:', url);
+    }
+    return originalFetch.apply(this, args);
+  };
+
+  // Interceptar sendBeacon también
+  const originalBeacon = navigator.sendBeacon;
+  navigator.sendBeacon = function(url, ...args) {
+    if (typeof url === 'string' && 
+        (url.includes('/g/collect') || 
+         url.includes('/mp/collect') ||
+         url.includes('google-analytics.com'))) {
+      ga4RequestDetected = true;
+      console.log('🔍 [ClaroTrack] Beacon a GA4 detectado:', url);
+    }
+    return originalBeacon.call(this, url, ...args);
+  };
+
+  setTimeout(() => {
+    // Restaurar funciones originales
+    window.fetch = originalFetch;
+    navigator.sendBeacon = originalBeacon;
+
+    console.log('🔍 [ClaroTrack] ¿GA4 envió eventos?:', ga4RequestDetected);
+
+    if (ga4RequestDetected) {
+      console.warn('⛔ [ClaroTrack] GTM + GA4 funcionando → ClaroTrack deshabilitado');
+    } else {
+      console.log('✅ [ClaroTrack] GA4 bloqueado o inactivo → ClaroTrack toma control');
+      initClaroTrack();
+    }
+  }, 3000);
 
 
   async function initClaroTrack() {
