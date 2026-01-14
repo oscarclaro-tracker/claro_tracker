@@ -19,22 +19,34 @@ console.log('🚀 [ClaroTrack] Script cargado');
       return aid;
     }
 
+    function extractParams(data) {
+  const params = {};
+  for (const key in data) {
+    if (key !== 'event') {
+      params[key] = data[key];
+    }
+  }
+  return params;
+}
+
+
     // =========================
     // Enviar evento
     // =========================
-    function send(eventName, payload = {}) {
-      fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          aid: getAid(),
-          event: eventName,
-          path: location.pathname,
-          dataLayer: payload,
-          ts: Date.now()
-        })
-      }).catch(() => {});
-    }
+    function send(eventName, params = {}) {
+  fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      aid: getAid(),
+      event: eventName,
+      params,               // 👈 limpio
+      path: location.pathname,
+      ts: Date.now()
+    })
+  }).catch(() => {});
+}
+
 
     // =========================
     // 0️⃣ Reglas dinámicas (DECLARADAS PRIMERO)
@@ -84,7 +96,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
     // =========================
     window.dataLayer.forEach(item => {
       if (item && item.event) {
-        send(item.event, item);
+        send(item.event, extractParams(item));
         applyRules(item.event, item);
       }
     });
