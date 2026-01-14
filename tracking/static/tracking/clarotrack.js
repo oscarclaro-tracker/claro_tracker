@@ -1,71 +1,49 @@
 console.log('🚀 [ClaroTrack] Script cargado');
 
-(function () {
-  console.log('✅ [ClaroTrack] Iniciando detección...');
+(async function () {
+
+async function isGA4ReallyWorking() {
+    try {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 1500);
+
+      await fetch('https://www.google-analytics.com/g/collect', {
+        method: 'POST',
+        mode: 'no-cors',
+        body: 'v=2&tid=G-TEST&cid=555&t=pageview',
+        signal: controller.signal
+      });
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   const hasGTM = !!window.google_tag_manager;
-  
-  console.log('🔍 [ClaroTrack] GTM detectado:', hasGTM);
+  const ga4Works = await isGA4ReallyWorking(); // ✅ ahora sí
 
-  if (!hasGTM) {
-    console.log('✅ [ClaroTrack] No hay GTM → iniciando ClaroTrack');
-    initClaroTrack();
+  console.log('[ClaroTrack]', { hasGTM, ga4Works });
+
+  if (hasGTM && ga4Works) {
+    console.warn('[ClaroTrack] GTM + GA4 OK → no se inicializa');
     return;
   }
 
-  // Si hay GTM, esperar 3 segundos para ver si envía eventos a GA4
-  console.log('⏳ [ClaroTrack] GTM detectado, esperando 3s para verificar GA4...');
-  
-  let ga4RequestDetected = false;
 
-  // Interceptar fetch para detectar peticiones a GA4
-  const originalFetch = window.fetch;
-  window.fetch = function(...args) {
-    const url = args[0];
-    if (typeof url === 'string' && 
-        (url.includes('/g/collect') || 
-         url.includes('/mp/collect') ||
-         url.includes('google-analytics.com') ||
-         url.includes('analytics.google.com'))) {
-      ga4RequestDetected = true;
-      console.log('🔍 [ClaroTrack] Request a GA4 detectado:', url);
-    }
-    return originalFetch.apply(this, args);
-  };
-
-  // Interceptar sendBeacon también
-  const originalBeacon = navigator.sendBeacon;
-  navigator.sendBeacon = function(url, ...args) {
-    if (typeof url === 'string' && 
-        (url.includes('/g/collect') || 
-         url.includes('/mp/collect') ||
-         url.includes('google-analytics.com'))) {
-      ga4RequestDetected = true;
-      console.log('🔍 [ClaroTrack] Beacon a GA4 detectado:', url);
-    }
-    return originalBeacon.call(this, url, ...args);
-  };
-
-  setTimeout(() => {
-    // Restaurar funciones originales
-    window.fetch = originalFetch;
-    navigator.sendBeacon = originalBeacon;
-
-    console.log('🔍 [ClaroTrack] ¿GA4 envió eventos?:', ga4RequestDetected);
-
-    if (ga4RequestDetected) {
-      console.warn('⛔ [ClaroTrack] GTM + GA4 funcionando → ClaroTrack deshabilitado');
-    } else {
-      console.log('✅ [ClaroTrack] GA4 bloqueado o inactivo → ClaroTrack toma control');
-      initClaroTrack();
-    }
-  }, 3000);
-
-  // =========================
-  // Función de inicialización
-  // =========================
-  function initClaroTrack() {
+  async function initClaroTrack() {
     console.log('🚀 [ClaroTrack] Inicializando sistema de tracking...');
+
+  const ga4Works = await isGA4ReallyWorking();
+
+  console.log('🔍 [ClaroTrack] GA4 realmente funcional:', ga4Works);
+
+  if (ga4Works) {
+    console.warn('⛔ [ClaroTrack] GA4 operativo → ClaroTrack NO dispara');
+    return;
+  }
+
+  console.log('✅ [ClaroTrack] GA4 BLOQUEADO → ClaroTrack toma control');
 
     const API = 'https://claro-tracker.onrender.com/api/collect/';
 
@@ -81,36 +59,39 @@ console.log('🚀 [ClaroTrack] Script cargado');
       return aid;
     }
 
-    function extractParams(data) {
-      const source = data.params ?? data;
-      const params = {};
-      for (const key in source) {
-        if (key !== 'event') {
-          params[key] = source[key];
-        }
-      }
-      return params;
+ function extractParams(data) {
+  const source = data.params ?? data;
+
+  const params = {};
+  for (const key in source) {
+    if (key !== 'event') {
+      params[key] = source[key];
     }
+  }
+  return params;
+}
+
 
     // =========================
     // Enviar evento
     // =========================
     function send(eventName, params = {}) {
-      fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          aid: getAid(),
-          event: eventName,
-          params,
-          path: location.pathname,
-          ts: Date.now()
-        })
-      }).catch(() => {});
-    }
+  fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      aid: getAid(),
+      event: eventName,
+      params,               // 👈 limpio
+      path: location.pathname,
+      ts: Date.now()
+    })
+  }).catch(() => {});
+}
+
 
     // =========================
-    // 0️⃣ Reglas dinámicas
+    // 0️⃣ Reglas dinámicas (DECLARADAS PRIMERO)
     // =========================
     let dynamicRules = [];
 
@@ -135,7 +116,9 @@ console.log('🚀 [ClaroTrack] Script cargado');
 
     async function loadRules() {
       try {
-        const res = await fetch('https://claro-tracker.onrender.com/api/tracking_rules/');
+        const res = await fetch(
+          'https://claro-tracker.onrender.com/api/tracking_rules/'
+        );
         dynamicRules = await res.json();
         console.log('📜 [ClaroTrack] Reglas cargadas:', dynamicRules.length);
       } catch (e) {
@@ -168,14 +151,16 @@ console.log('🚀 [ClaroTrack] Script cargado');
     window.dataLayer.push = function (...args) {
       args.forEach(item => {
         if (item && item.event) {
-          send(item.event, extractParams(item));
+          send(item.event, item);
           applyRules(item.event, item);
         }
       });
       return originalPush(...args);
     };
 
+    // =========================
     // Helper
+    // =========================
     function pushEvent(event, params = {}) {
       window.dataLayer.push({ event, ...params });
     }
@@ -241,7 +226,8 @@ console.log('🚀 [ClaroTrack] Script cargado');
 
     window.addEventListener('scroll', () => {
       const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
       const percent = Math.round((scrollTop / docHeight) * 100);
 
       pushEvent('scroll', { scroll_percent: percent });
@@ -329,6 +315,8 @@ console.log('🚀 [ClaroTrack] Script cargado');
 
     console.log('✅ [ClaroTrack] Sistema activo');
   }
+
+  initClaroTrack();
 
 })();
 
