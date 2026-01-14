@@ -1,65 +1,45 @@
 console.log('🚀 [ClaroTrack] Script cargado');
 
 (function () {
-  function isGA4Active() {
-  // 1️⃣ gtag existe
-  if (typeof window.gtag === 'function') {
-    return true;
+
+  // =========================
+  // Detectar si GA4 REALMENTE funciona
+  // =========================
+  async function isGA4ReallyWorking() {
+    if (typeof fetch !== 'function') return false;
+
+    try {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 1500);
+
+      await fetch('https://www.google-analytics.com/g/collect', {
+        method: 'POST',
+        mode: 'no-cors',
+        body: 'v=2&tid=G-TEST&cid=555&t=pageview',
+        signal: controller.signal
+      });
+
+      return true; // no bloqueado
+    } catch (e) {
+      return false; // bloqueado / abort / adblock
+    }
   }
-
-  // 2️⃣ dataLayer con señal GA
-  if (Array.isArray(window.dataLayer)) {
-    const hasGAEvent = window.dataLayer.some(
-      e => e?.event === 'gtm.js' || e?.event === 'page_view'
-    );
-    if (hasGAEvent) return true;
-  }
-
-  // 3️⃣ Script GA cargado
-  const gaScript = document.querySelector(
-    'script[src*="googletagmanager.com/gtag/js"]'
-  );
-  if (gaScript) return true;
-
-  return false;
-}
-
-async function isGA4ReallyWorking() {
-  if (typeof fetch !== 'function') return false;
-
-  try {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 1500);
-
-    await fetch('https://www.google-analytics.com/g/collect', {
-      method: 'POST',
-      mode: 'no-cors',
-      body: 'v=2&tid=G-TEST&cid=555&t=pageview',
-      signal: controller.signal
-    });
-
-    // Si llega aquí → NO fue bloqueado
-    return true;
-  } catch (e) {
-    // Abort, blocked, adblock → GA4 NO funciona
-    return false;
-  }
-}
-
 
   async function initClaroTrack() {
     console.log('🚀 [ClaroTrack] Inicializando sistema de tracking...');
 
-  const ga4Works = await isGA4ReallyWorking();
+    const hasGTM = !!window.google_tag_manager;
+    const ga4Works = await isGA4ReallyWorking();
 
-  console.log('🔍 [ClaroTrack] GA4 realmente funcional:', ga4Works);
+    console.log('[ClaroTrack] GTM:', hasGTM, 'GA4:', ga4Works);
 
-  if (ga4Works) {
-    console.warn('⛔ [ClaroTrack] GA4 operativo → ClaroTrack NO dispara');
-    return;
-  }
+    // 👉 Si GTM + GA4 funcionan, NO interceptar
+    if (hasGTM && ga4Works) {
+      console.warn('[ClaroTrack] GTM + GA4 OK → no intercepta');
+      return;
+    }
 
-  console.log('✅ [ClaroTrack] GA4 BLOQUEADO → ClaroTrack toma control');
+    console.log('[ClaroTrack] Fallback server activo');
 
     const API = 'https://claro-tracker.onrender.com/api/collect/';
 
@@ -75,39 +55,40 @@ async function isGA4ReallyWorking() {
       return aid;
     }
 
- function extractParams(data) {
-  const source = data.params ?? data;
+    // =========================
+    // Limpiar params
+    // =========================
+    function extractParams(data) {
+      const source = data.params ?? data;
+      const params = {};
 
-  const params = {};
-  for (const key in source) {
-    if (key !== 'event') {
-      params[key] = source[key];
+      for (const key in source) {
+        if (key !== 'event' && key !== '__ct_internal') {
+          params[key] = source[key];
+        }
+      }
+      return params;
     }
-  }
-  return params;
-}
-
 
     // =========================
-    // Enviar evento
+    // Enviar evento al backend
     // =========================
     function send(eventName, params = {}) {
-  fetch(API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      aid: getAid(),
-      event: eventName,
-      params,               // 👈 limpio
-      path: location.pathname,
-      ts: Date.now()
-    })
-  }).catch(() => {});
-}
-
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          aid: getAid(),
+          event: eventName,
+          params,
+          path: location.pathname,
+          ts: Date.now()
+        })
+      }).catch(() => {});
+    }
 
     // =========================
-    // 0️⃣ Reglas dinámicas (DECLARADAS PRIMERO)
+    // Reglas dinámicas
     // =========================
     let dynamicRules = [];
 
@@ -116,8 +97,10 @@ async function isGA4ReallyWorking() {
         if (rule.listen_event !== eventName) return;
         if (rule.url_contains && !location.pathname.includes(rule.url_contains)) return;
 
+        // ⚠️ evento interno para evitar loop
         window.dataLayer.push({
-          event: rule.fire_event
+          event: rule.fire_event,
+          __ct_internal: true
         });
 
         if (rule.custom_js) {
@@ -150,24 +133,24 @@ async function isGA4ReallyWorking() {
     window.dataLayer = window.dataLayer || [];
 
     // =========================
-    // 1️⃣ Procesar eventos existentes
+    // Procesar eventos existentes
     // =========================
     window.dataLayer.forEach(item => {
-      if (item && item.event) {
+      if (item && item.event && !item.__ct_internal) {
         send(item.event, extractParams(item));
         applyRules(item.event, item);
       }
     });
 
     // =========================
-    // 2️⃣ Interceptar dataLayer.push
+    // Interceptar dataLayer.push
     // =========================
     const originalPush = window.dataLayer.push.bind(window.dataLayer);
 
     window.dataLayer.push = function (...args) {
       args.forEach(item => {
-        if (item && item.event) {
-          send(item.event, item);
+        if (item && item.event && !item.__ct_internal) {
+          send(item.event, extractParams(item));
           applyRules(item.event, item);
         }
       });
@@ -175,14 +158,18 @@ async function isGA4ReallyWorking() {
     };
 
     // =========================
-    // Helper
+    // Helper interno
     // =========================
     function pushEvent(event, params = {}) {
-      window.dataLayer.push({ event, ...params });
+      window.dataLayer.push({
+        event,
+        __ct_internal: true,
+        ...params
+      });
     }
 
     // =========================
-    // 3️⃣ Page events
+    // Page events
     // =========================
     function firePageView() {
       pushEvent('page_view');
@@ -209,7 +196,7 @@ async function isGA4ReallyWorking() {
     );
 
     // =========================
-    // 4️⃣ Click & Interaction
+    // Click & Interaction
     // =========================
     ['click', 'dblclick', 'contextmenu', 'mousedown', 'mouseup'].forEach(ev =>
       document.addEventListener(ev, e => {
@@ -236,7 +223,7 @@ async function isGA4ReallyWorking() {
     );
 
     // =========================
-    // 5️⃣ Scroll
+    // Scroll
     // =========================
     let firedScroll = {};
 
@@ -257,7 +244,7 @@ async function isGA4ReallyWorking() {
     });
 
     // =========================
-    // 6️⃣ Element visibility
+    // Element visibility
     // =========================
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
@@ -277,7 +264,7 @@ async function isGA4ReallyWorking() {
     );
 
     // =========================
-    // 7️⃣ Keyboard
+    // Keyboard
     // =========================
     ['keydown', 'keyup', 'keypress'].forEach(ev =>
       document.addEventListener(ev, e =>
@@ -286,7 +273,7 @@ async function isGA4ReallyWorking() {
     );
 
     // =========================
-    // 8️⃣ Media
+    // Media
     // =========================
     ['play', 'pause', 'ended', 'volumechange'].forEach(ev =>
       document.addEventListener(ev, e => {
@@ -301,7 +288,7 @@ async function isGA4ReallyWorking() {
     );
 
     // =========================
-    // 9️⃣ Touch
+    // Touch
     // =========================
     ['touchstart', 'touchend', 'touchmove'].forEach(ev =>
       document.addEventListener(ev, e =>
@@ -310,7 +297,7 @@ async function isGA4ReallyWorking() {
     );
 
     // =========================
-    // 🔟 Network / errors
+    // Network / errors
     // =========================
     window.addEventListener('online', () => pushEvent('online'));
     window.addEventListener('offline', () => pushEvent('offline'));
