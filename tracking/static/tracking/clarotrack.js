@@ -1,9 +1,42 @@
 console.log('🚀 [ClaroTrack] Script cargado');
 
 (function () {
+  function isGA4Active() {
+  // 1️⃣ gtag existe
+  if (typeof window.gtag === 'function') {
+    return true;
+  }
+
+  // 2️⃣ dataLayer con señal GA
+  if (Array.isArray(window.dataLayer)) {
+    const hasGAEvent = window.dataLayer.some(
+      e => e?.event === 'gtm.js' || e?.event === 'page_view'
+    );
+    if (hasGAEvent) return true;
+  }
+
+  // 3️⃣ Script GA cargado
+  const gaScript = document.querySelector(
+    'script[src*="googletagmanager.com/gtag/js"]'
+  );
+  if (gaScript) return true;
+
+  return false;
+}
 
   function initClaroTrack() {
     console.log('🚀 [ClaroTrack] Inicializando sistema de tracking...');
+
+  const ga4Active = isGA4Active();
+
+  console.log('🔍 [ClaroTrack] GA4 activo:', ga4Active);
+
+  if (ga4Active) {
+    console.warn('⛔ [ClaroTrack] GA4 detectado → ClaroTrack NO disparará eventos');
+    return;
+  }
+
+  console.log('✅ [ClaroTrack] GA4 bloqueado → ClaroTrack tomará el control');
 
     const API = 'https://claro-tracker.onrender.com/api/collect/';
 
