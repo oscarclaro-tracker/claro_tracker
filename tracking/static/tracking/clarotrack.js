@@ -24,19 +24,42 @@ console.log('🚀 [ClaroTrack] Script cargado');
   return false;
 }
 
-  function initClaroTrack() {
+async function isGA4ReallyWorking() {
+  if (typeof fetch !== 'function') return false;
+
+  try {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 1500);
+
+    await fetch('https://www.google-analytics.com/g/collect', {
+      method: 'POST',
+      mode: 'no-cors',
+      body: 'v=2&tid=G-TEST&cid=555&t=pageview',
+      signal: controller.signal
+    });
+
+    // Si llega aquí → NO fue bloqueado
+    return true;
+  } catch (e) {
+    // Abort, blocked, adblock → GA4 NO funciona
+    return false;
+  }
+}
+
+
+  async function initClaroTrack() {
     console.log('🚀 [ClaroTrack] Inicializando sistema de tracking...');
 
-  const ga4Active = isGA4Active();
+  const ga4Works = await isGA4ReallyWorking();
 
-  console.log('🔍 [ClaroTrack] GA4 activo:', ga4Active);
+  console.log('🔍 [ClaroTrack] GA4 realmente funcional:', ga4Works);
 
-  if (ga4Active) {
-    console.warn('⛔ [ClaroTrack] GA4 detectado → ClaroTrack NO disparará eventos');
+  if (ga4Works) {
+    console.warn('⛔ [ClaroTrack] GA4 operativo → ClaroTrack NO dispara');
     return;
   }
 
-  console.log('✅ [ClaroTrack] GA4 bloqueado → ClaroTrack tomará el control');
+  console.log('✅ [ClaroTrack] GA4 BLOQUEADO → ClaroTrack toma control');
 
     const API = 'https://claro-tracker.onrender.com/api/collect/';
 
