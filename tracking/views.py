@@ -179,7 +179,6 @@ def collect_event(request):
         params.update({
             "page_location": event.path,
             "engagement_time_msec": 1,
-            "debug_mode": True
         })
 
         # 5️⃣ Enviar a GA4
