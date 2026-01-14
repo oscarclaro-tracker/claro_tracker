@@ -1,13 +1,8 @@
 console.log('🚀 [ClaroTrack] Script cargado');
 
-(function () {
+(async function () {
 
-  // =========================
-  // Detectar si GA4 REALMENTE funciona
-  // =========================
-  async function isGA4ReallyWorking() {
-    if (typeof fetch !== 'function') return false;
-
+async function isGA4ReallyWorking() {
     try {
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 1500);
@@ -19,27 +14,36 @@ console.log('🚀 [ClaroTrack] Script cargado');
         signal: controller.signal
       });
 
-      return true; // no bloqueado
-    } catch (e) {
-      return false; // bloqueado / abort / adblock
+      return true;
+    } catch {
+      return false;
     }
   }
+
+  const hasGTM = !!window.google_tag_manager;
+  const ga4Works = await isGA4ReallyWorking(); // ✅ ahora sí
+
+  console.log('[ClaroTrack]', { hasGTM, ga4Works });
+
+  if (hasGTM && ga4Works) {
+    console.warn('[ClaroTrack] GTM + GA4 OK → no se inicializa');
+    return;
+  }
+
 
   async function initClaroTrack() {
     console.log('🚀 [ClaroTrack] Inicializando sistema de tracking...');
 
-    const hasGTM = !!window.google_tag_manager;
-    const ga4Works = await isGA4ReallyWorking();
+  const ga4Works = await isGA4ReallyWorking();
 
-    console.log('[ClaroTrack] GTM:', hasGTM, 'GA4:', ga4Works);
+  console.log('🔍 [ClaroTrack] GA4 realmente funcional:', ga4Works);
 
-    // 👉 Si GTM + GA4 funcionan, NO interceptar
-    if (hasGTM && ga4Works) {
-      console.warn('[ClaroTrack] GTM + GA4 OK → no intercepta');
-      return;
-    }
+  if (ga4Works) {
+    console.warn('⛔ [ClaroTrack] GA4 operativo → ClaroTrack NO dispara');
+    return;
+  }
 
-    console.log('[ClaroTrack] Fallback server activo');
+  console.log('✅ [ClaroTrack] GA4 BLOQUEADO → ClaroTrack toma control');
 
     const API = 'https://claro-tracker.onrender.com/api/collect/';
 
@@ -55,40 +59,39 @@ console.log('🚀 [ClaroTrack] Script cargado');
       return aid;
     }
 
-    // =========================
-    // Limpiar params
-    // =========================
-    function extractParams(data) {
-      const source = data.params ?? data;
-      const params = {};
+ function extractParams(data) {
+  const source = data.params ?? data;
 
-      for (const key in source) {
-        if (key !== 'event' && key !== '__ct_internal') {
-          params[key] = source[key];
-        }
-      }
-      return params;
+  const params = {};
+  for (const key in source) {
+    if (key !== 'event') {
+      params[key] = source[key];
     }
+  }
+  return params;
+}
+
 
     // =========================
-    // Enviar evento al backend
+    // Enviar evento
     // =========================
     function send(eventName, params = {}) {
-      fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          aid: getAid(),
-          event: eventName,
-          params,
-          path: location.pathname,
-          ts: Date.now()
-        })
-      }).catch(() => {});
-    }
+  fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      aid: getAid(),
+      event: eventName,
+      params,               // 👈 limpio
+      path: location.pathname,
+      ts: Date.now()
+    })
+  }).catch(() => {});
+}
+
 
     // =========================
-    // Reglas dinámicas
+    // 0️⃣ Reglas dinámicas (DECLARADAS PRIMERO)
     // =========================
     let dynamicRules = [];
 
@@ -97,10 +100,8 @@ console.log('🚀 [ClaroTrack] Script cargado');
         if (rule.listen_event !== eventName) return;
         if (rule.url_contains && !location.pathname.includes(rule.url_contains)) return;
 
-        // ⚠️ evento interno para evitar loop
         window.dataLayer.push({
-          event: rule.fire_event,
-          __ct_internal: true
+          event: rule.fire_event
         });
 
         if (rule.custom_js) {
@@ -133,24 +134,24 @@ console.log('🚀 [ClaroTrack] Script cargado');
     window.dataLayer = window.dataLayer || [];
 
     // =========================
-    // Procesar eventos existentes
+    // 1️⃣ Procesar eventos existentes
     // =========================
     window.dataLayer.forEach(item => {
-      if (item && item.event && !item.__ct_internal) {
+      if (item && item.event) {
         send(item.event, extractParams(item));
         applyRules(item.event, item);
       }
     });
 
     // =========================
-    // Interceptar dataLayer.push
+    // 2️⃣ Interceptar dataLayer.push
     // =========================
     const originalPush = window.dataLayer.push.bind(window.dataLayer);
 
     window.dataLayer.push = function (...args) {
       args.forEach(item => {
-        if (item && item.event && !item.__ct_internal) {
-          send(item.event, extractParams(item));
+        if (item && item.event) {
+          send(item.event, item);
           applyRules(item.event, item);
         }
       });
@@ -158,18 +159,14 @@ console.log('🚀 [ClaroTrack] Script cargado');
     };
 
     // =========================
-    // Helper interno
+    // Helper
     // =========================
     function pushEvent(event, params = {}) {
-      window.dataLayer.push({
-        event,
-        __ct_internal: true,
-        ...params
-      });
+      window.dataLayer.push({ event, ...params });
     }
 
     // =========================
-    // Page events
+    // 3️⃣ Page events
     // =========================
     function firePageView() {
       pushEvent('page_view');
@@ -196,7 +193,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
     );
 
     // =========================
-    // Click & Interaction
+    // 4️⃣ Click & Interaction
     // =========================
     ['click', 'dblclick', 'contextmenu', 'mousedown', 'mouseup'].forEach(ev =>
       document.addEventListener(ev, e => {
@@ -223,7 +220,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
     );
 
     // =========================
-    // Scroll
+    // 5️⃣ Scroll
     // =========================
     let firedScroll = {};
 
@@ -244,7 +241,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
     });
 
     // =========================
-    // Element visibility
+    // 6️⃣ Element visibility
     // =========================
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
@@ -264,7 +261,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
     );
 
     // =========================
-    // Keyboard
+    // 7️⃣ Keyboard
     // =========================
     ['keydown', 'keyup', 'keypress'].forEach(ev =>
       document.addEventListener(ev, e =>
@@ -273,7 +270,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
     );
 
     // =========================
-    // Media
+    // 8️⃣ Media
     // =========================
     ['play', 'pause', 'ended', 'volumechange'].forEach(ev =>
       document.addEventListener(ev, e => {
@@ -288,7 +285,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
     );
 
     // =========================
-    // Touch
+    // 9️⃣ Touch
     // =========================
     ['touchstart', 'touchend', 'touchmove'].forEach(ev =>
       document.addEventListener(ev, e =>
@@ -297,7 +294,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
     );
 
     // =========================
-    // Network / errors
+    // 🔟 Network / errors
     // =========================
     window.addEventListener('online', () => pushEvent('online'));
     window.addEventListener('offline', () => pushEvent('offline'));
