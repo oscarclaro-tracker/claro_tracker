@@ -89,6 +89,20 @@ def send_event_to_ga4(event_name, client_id, params=None):
         print("❌ Error enviando a GA4:", str(e))
         return 500
 
+def get_value_by_path(data, path):
+    """
+    Lee valores anidados usando dot-notation
+    Ej: ecommerce.items
+    """
+    value = data
+    for key in path.split('.'):
+        if isinstance(value, dict):
+            value = value.get(key)
+        else:
+            return None
+    return value
+
+
 @api_view(['POST'])
 def collect_event(request):
     logger.warning("🔥 collect_event EJECUTADO")
@@ -146,10 +160,20 @@ def collect_event(request):
             except Exception:
                 params_map = {}
 
-        for ga4_param, source_key in params_map.items():
-            value = data.get(source_key)
+        event_params = data.get("params", data)
+
+        for ga4_param, source_path in params_map.items():
+
+            # 1️⃣ VALOR CONSTANTE
+            if isinstance(source_path, str) and source_path.startswith("$const:"):
+                params[ga4_param] = source_path.replace("$const:", "")
+                continue
+
+            # 2️⃣ VALOR DINÁMICO (dot-notation)
+            value = get_value_by_path(event_params, source_path)
             if value is not None:
                 params[ga4_param] = value
+
 
         # 4️⃣ Campos mínimos GA4
         params.update({

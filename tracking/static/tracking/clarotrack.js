@@ -19,11 +19,13 @@ console.log('🚀 [ClaroTrack] Script cargado');
       return aid;
     }
 
-    function extractParams(data) {
+ function extractParams(data) {
+  const source = data.params ?? data;
+
   const params = {};
-  for (const key in data) {
+  for (const key in source) {
     if (key !== 'event') {
-      params[key] = data[key];
+      params[key] = source[key];
     }
   }
   return params;
