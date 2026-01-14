@@ -1,6 +1,6 @@
 console.log('🚀 [ClaroTrack] Script cargado');
 
-(async function () {
+(function () {
   console.log('✅ [ClaroTrack] Iniciando detección...');
 
   const hasGTM = !!window.google_tag_manager;
@@ -61,20 +61,11 @@ console.log('🚀 [ClaroTrack] Script cargado');
     }
   }, 3000);
 
-
-  async function initClaroTrack() {
+  // =========================
+  // Función de inicialización
+  // =========================
+  function initClaroTrack() {
     console.log('🚀 [ClaroTrack] Inicializando sistema de tracking...');
-
-  const ga4Works = await isGA4ReallyWorking();
-
-  console.log('🔍 [ClaroTrack] GA4 realmente funcional:', ga4Works);
-
-  if (ga4Works) {
-    console.warn('⛔ [ClaroTrack] GA4 operativo → ClaroTrack NO dispara');
-    return;
-  }
-
-  console.log('✅ [ClaroTrack] GA4 BLOQUEADO → ClaroTrack toma control');
 
     const API = 'https://claro-tracker.onrender.com/api/collect/';
 
@@ -90,39 +81,36 @@ console.log('🚀 [ClaroTrack] Script cargado');
       return aid;
     }
 
- function extractParams(data) {
-  const source = data.params ?? data;
-
-  const params = {};
-  for (const key in source) {
-    if (key !== 'event') {
-      params[key] = source[key];
+    function extractParams(data) {
+      const source = data.params ?? data;
+      const params = {};
+      for (const key in source) {
+        if (key !== 'event') {
+          params[key] = source[key];
+        }
+      }
+      return params;
     }
-  }
-  return params;
-}
-
 
     // =========================
     // Enviar evento
     // =========================
     function send(eventName, params = {}) {
-  fetch(API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      aid: getAid(),
-      event: eventName,
-      params,               // 👈 limpio
-      path: location.pathname,
-      ts: Date.now()
-    })
-  }).catch(() => {});
-}
-
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          aid: getAid(),
+          event: eventName,
+          params,
+          path: location.pathname,
+          ts: Date.now()
+        })
+      }).catch(() => {});
+    }
 
     // =========================
-    // 0️⃣ Reglas dinámicas (DECLARADAS PRIMERO)
+    // 0️⃣ Reglas dinámicas
     // =========================
     let dynamicRules = [];
 
@@ -147,9 +135,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
 
     async function loadRules() {
       try {
-        const res = await fetch(
-          'https://claro-tracker.onrender.com/api/tracking_rules/'
-        );
+        const res = await fetch('https://claro-tracker.onrender.com/api/tracking_rules/');
         dynamicRules = await res.json();
         console.log('📜 [ClaroTrack] Reglas cargadas:', dynamicRules.length);
       } catch (e) {
@@ -182,16 +168,14 @@ console.log('🚀 [ClaroTrack] Script cargado');
     window.dataLayer.push = function (...args) {
       args.forEach(item => {
         if (item && item.event) {
-          send(item.event, item);
+          send(item.event, extractParams(item));
           applyRules(item.event, item);
         }
       });
       return originalPush(...args);
     };
 
-    // =========================
     // Helper
-    // =========================
     function pushEvent(event, params = {}) {
       window.dataLayer.push({ event, ...params });
     }
@@ -257,8 +241,7 @@ console.log('🚀 [ClaroTrack] Script cargado');
 
     window.addEventListener('scroll', () => {
       const scrollTop = window.scrollY;
-      const docHeight =
-        document.documentElement.scrollHeight - window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       const percent = Math.round((scrollTop / docHeight) * 100);
 
       pushEvent('scroll', { scroll_percent: percent });
@@ -346,8 +329,6 @@ console.log('🚀 [ClaroTrack] Script cargado');
 
     console.log('✅ [ClaroTrack] Sistema activo');
   }
-
-  initClaroTrack();
 
 })();
 
