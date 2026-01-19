@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from tracking.models import GA4Rule
+from tracking.models import GA4Rule, TrackingRule
 
 class Command(BaseCommand):
     help = 'Crea reglas GA4 básicas'
@@ -30,7 +30,7 @@ class Command(BaseCommand):
         ]
 
         for rule_data in rules:
-            rule, created = GA4Rule.objects.get_or_create(
+            rule, created = TrackingRule.objects.get_or_create(
                 listen_event=rule_data["listen_event"],
                 fire_event=rule_data["fire_event"],
                 defaults=rule_data
