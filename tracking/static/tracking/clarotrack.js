@@ -1,6 +1,11 @@
 console.log('🚀 [ClaroTrack] Script cargado');
-
+const CLAROTRACK_ENABLED = true;
 (async function () {
+
+if (!CLAROTRACK_ENABLED) {
+    console.warn('⛔ [ClaroTrack] DESACTIVADO manualmente');
+    return;
+  }
 
 async function isGA4ReallyWorking() {
     try {
