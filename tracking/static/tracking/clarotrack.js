@@ -1,5 +1,5 @@
 console.log('🚀 [ClaroTrack] Script cargado');
-const CLAROTRACK_ENABLED = true;
+const CLAROTRACK_ENABLED = false;
 (async function () {
 
 if (!CLAROTRACK_ENABLED) {
