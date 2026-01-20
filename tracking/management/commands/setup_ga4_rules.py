@@ -30,7 +30,7 @@ class Command(BaseCommand):
         ]
 
         for rule_data in rules:
-            rule, created = TrackingRule.objects.get_or_create(
+            rule, created = GA4Rule.objects.get_or_create(
                 listen_event=rule_data["listen_event"],
                 fire_event=rule_data["fire_event"],
                 defaults=rule_data
