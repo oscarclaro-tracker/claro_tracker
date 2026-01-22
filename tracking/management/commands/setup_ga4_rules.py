@@ -45,6 +45,25 @@ class Command(BaseCommand):
                     "fuente_track": "$const:claro_track"
                 }
             },
+            {
+                "listen_event": "purchase",
+                "fire_event": "purchase_claro_track_constante",
+                "active": True,
+                "url_contains": "",
+                "params_map": {
+
+                    # 🔹 MÍNIMO VITAL
+                    "transaction_id": "ecommerce.transaction_id",
+                    "business_unit": "business_unit",
+
+                    # 🔹 (opcional pero útil para QA)
+                    "currency": "ecommerce.currency",
+                    "value": "ecommerce.value",
+
+                    # 🔹 Constante para trazabilidad interna
+                    "fuente_track": "$const:claro_track"
+                }
+            },
             
         ]
 
