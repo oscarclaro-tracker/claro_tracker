@@ -15,10 +15,13 @@ class Command(BaseCommand):
             },
             {
                 "listen_event": "view_item",
-                "fire_event": "view_item_claro_track",
+                "fire_event": "view_item_claro_track_constante",
                 "active": True,
                 "url_contains": "",
-                "params_map": {}
+                "params_map": {
+
+                    "fuente_track": "$const:claro_track"
+                }
             },
             
         ]
