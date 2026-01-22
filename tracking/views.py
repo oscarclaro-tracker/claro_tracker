@@ -38,7 +38,7 @@ def clarotrack_static_proxy(request):
 
     return response
 
-def send_event_to_ga4(event_name, client_id, params=None, traffic_source=None):
+def send_event_to_ga4(event_name, client_id, params=None):
     url = "https://www.google-analytics.com/mp/collect"
     
     # Asegurar que client_id sea string válido
@@ -54,12 +54,6 @@ def send_event_to_ga4(event_name, client_id, params=None, traffic_source=None):
             }
         ]
     }
-    if traffic_source:
-        payload["traffic_source"] = {
-            "source": traffic_source.get("source"),
-            "medium": traffic_source.get("medium"),
-            "name": traffic_source.get("campaign")  # GA4 usa "name" para campaign
-        }
 
     print("➡️ Enviando a GA4:")
     print("   URL:", url)
@@ -167,12 +161,6 @@ def collect_event(request):
                 params_map = {}
 
         event_params = data.get("params", data)
-        # 🧲 EXTRAER TRAFFIC SOURCE DEL FRONTEND
-        traffic_source = None
-        if isinstance(event_params, dict) and "traffic_source" in event_params:
-            traffic_source = event_params.pop("traffic_source")
-            logger.warning(f"📡 Traffic source recibido: {traffic_source}")
-
 
         for ga4_param, source_path in params_map.items():
 
@@ -204,8 +192,7 @@ def collect_event(request):
             send_event_to_ga4(
                 event_name=rule.fire_event,
                 client_id=event.aid,
-                params=params,
-                traffic_source=traffic_source
+                params=params
             )
         else:
             logger.error("❌ Credenciales GA4 NO configuradas")
