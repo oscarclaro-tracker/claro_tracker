@@ -13,6 +13,13 @@ class Command(BaseCommand):
                 "url_contains": "",
                 "params_map": {}
             },
+            {
+                "listen_event": "view_item",
+                "fire_event": "view_item_claro_track",
+                "active": True,
+                "url_contains": "",
+                "params_map": {}
+            },
             
         ]
 
