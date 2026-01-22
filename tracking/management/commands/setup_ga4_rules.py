@@ -8,12 +8,12 @@ class Command(BaseCommand):
         rules = [
             {
                 "listen_event": "page_view",
-                "fire_event": "Brave_page_view_prueba_tienda",
+                "fire_event": "page_view_claro_track",
                 "active": True,
                 "url_contains": "",
                 "params_map": {}
             },
-            {
+            """{
                 "listen_event": "view_item",
                 "fire_event": "view_item",
                 "active": True,
@@ -25,7 +25,7 @@ class Command(BaseCommand):
                     "price_brave":"ecommerce.items.0.price",
                     "fuente":"$const:test_brave"
                 }
-            },
+            },"""
             
         ]
 
