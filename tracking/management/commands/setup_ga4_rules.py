@@ -7,11 +7,14 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         rules = [
             {
-                "listen_event": "page_view",
-                "fire_event": "page_view_claro_track",
+                "listen_event": "view_item",
+                "fire_event": "view_item",
                 "active": True,
                 "url_contains": "",
-                "params_map": {}
+                "params_map": {
+
+                    "fuente_track": "$const:claro_track"
+                }
             },
             {
                 "listen_event": "view_item",
@@ -20,6 +23,25 @@ class Command(BaseCommand):
                 "url_contains": "",
                 "params_map": {
 
+                    "fuente_track": "$const:claro_track"
+                }
+            },
+            {
+                "listen_event": "purchase",
+                "fire_event": "purchase",
+                "active": True,
+                "url_contains": "",
+                "params_map": {
+
+                    # 🔹 MÍNIMO VITAL
+                    "transaction_id": "ecommerce.transaction_id",
+                    "business_unit": "business_unit",
+
+                    # 🔹 (opcional pero útil para QA)
+                    "currency": "ecommerce.currency",
+                    "value": "ecommerce.value",
+
+                    # 🔹 Constante para trazabilidad interna
                     "fuente_track": "$const:claro_track"
                 }
             },
