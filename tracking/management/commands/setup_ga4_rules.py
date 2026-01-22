@@ -7,11 +7,31 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         rules = [
             {
-                "listen_event": "page_view",
-                "fire_event": "page_view_claro_track",
+                "listen_event": "purchase",
+                "fire_event": "purchase",
                 "active": True,
                 "url_contains": "",
-                "params_map": {}
+                "params_map": {
+
+                    # 🔹 Ecommerce GA4 estándar
+                    "transaction_id": "ecommerce.transaction_id",
+                    "currency": "ecommerce.currency",
+                    "value": "ecommerce.value",
+                    "tax": "ecommerce.tax",
+                    "shipping": "ecommerce.shipping",
+                    "coupon": "ecommerce.coupon",
+                    "items": "ecommerce.items",
+
+                    # 🔹 Campos custom útiles de negocio
+                    "payment_method": "ecommerce.payment_method",
+                    "status": "ecommerce.status",
+
+                    "business_unit": "business_unit",
+                    "business_unit2": "business_unit2",
+
+                    # 🔹 Constante para trazabilidad interna
+                    "fuente_track": "$const:claro_track"
+                }
             },
             
         ]

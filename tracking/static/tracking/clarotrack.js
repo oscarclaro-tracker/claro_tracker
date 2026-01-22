@@ -64,6 +64,60 @@ async function isGA4ReallyWorking() {
       return aid;
     }
 
+
+// =========================
+// Attribution (GA4-like)
+// =========================
+function getAttribution() {
+  const params = new URLSearchParams(location.search);
+
+  // Leer UTMs estándar
+  let utm_source   = params.get("utm_source");
+  let utm_medium   = params.get("utm_medium");
+  let utm_campaign = params.get("utm_campaign");
+  let utm_term     = params.get("utm_term");
+
+  // Recuperar lo ya guardado
+  let saved = JSON.parse(localStorage.getItem("ct_utm") || "{}");
+
+  // 🔥 Detección automática Google Ads
+  if (params.get("gclid") || params.get("gbraid")) {
+    utm_source = utm_source || "google";
+    utm_medium = utm_medium || "cpc";
+  }
+
+  // Guardar solo si llegan valores nuevos
+  if (utm_source)   saved.utm_source   = utm_source;
+  if (utm_medium)   saved.utm_medium   = utm_medium;
+  if (utm_campaign) saved.utm_campaign = utm_campaign;
+  if (utm_term)     saved.utm_term     = utm_term;
+
+  localStorage.setItem("ct_utm", JSON.stringify(saved));
+
+  // Fallbacks estilo GA4
+  const source =
+    saved.utm_source ||
+    (document.referrer ? new URL(document.referrer).hostname : "(direct)");
+
+  const medium =
+    saved.utm_medium ||
+    (document.referrer ? "referral" : "(none)");
+
+  const campaign = saved.utm_campaign || "(not set)";
+  const term     = saved.utm_term || "(not set)";
+
+  return {
+    source,
+    medium,
+    campaign,
+    term
+  };
+}
+
+
+
+
+
  function extractParams(data) {
   const source = data.params ?? data;
 
@@ -81,13 +135,17 @@ async function isGA4ReallyWorking() {
     // Enviar evento
     // =========================
     function send(eventName, params = {}) {
+      const attribution = getAttribution();
   fetch(API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       aid: getAid(),
       event: eventName,
-      params,               // 👈 limpio
+      params: {
+        ...params,
+        traffic_source: attribution   // 👈 CLAVE
+      },               // 👈 limpio
       path: location.pathname,
       ts: Date.now()
     })
