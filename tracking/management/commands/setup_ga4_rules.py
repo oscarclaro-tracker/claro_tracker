@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from tracking.models import GA4Rule, TrackingRule
+import json
 
 class Command(BaseCommand):
     help = 'Crea reglas GA4 básicas'
@@ -11,7 +12,7 @@ class Command(BaseCommand):
                 "fire_event": "purchase",
                 "active": True,
                 "url_contains": "",
-                "params_map": {
+                "params_map": json.dumps({
 
                     # 🔹 Ecommerce GA4 estándar
                     "transaction_id": "ecommerce.transaction_id",
@@ -31,7 +32,20 @@ class Command(BaseCommand):
 
                     # 🔹 Constante para trazabilidad interna
                     "fuente_track": "$const:claro_track"
-                }
+                })
+            },
+            {
+                "listen_event": "view_item",
+                "fire_event": "view_item_track_claro",
+                "active": True,
+                "url_contains": "",
+                "params_map": json.dumps({
+                    "business_unit": "business_unit",
+                    "business_unit2": "business_unit2",
+
+                    # 🔹 Constante para trazabilidad interna
+                    "fuente_track": "$const:claro_track"
+                })
             },            
         ]
 
