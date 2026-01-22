@@ -13,19 +13,6 @@ class Command(BaseCommand):
                 "url_contains": "",
                 "params_map": {}
             },
-            """{
-                "listen_event": "view_item",
-                "fire_event": "view_item",
-                "active": True,
-                "url_contains": "",
-                "params_map": {
-                    "items": "ecommerce.items",
-                    "business_unit_brave": "business_unit",
-                    "business_unit2_brave": "business_unit2",
-                    "price_brave":"ecommerce.items.0.price",
-                    "fuente":"$const:test_brave"
-                }
-            },"""
             
         ]
 
