@@ -33,6 +33,19 @@ class Command(BaseCommand):
                     "fuente_track": "$const:claro_track"
                 }
             },
+            {
+                "listen_event": "view_item",
+                "fire_event": "view_item_Track",
+                "active": True,
+                "url_contains": "",
+                "params_map": {
+                    # 🔹 Campos negocio
+                    "business_unit": "business_unit",
+
+                    # 🔹 Constante
+                    "fuente_track": "$const:claro_track"
+                }
+            },
             
         ]
 
